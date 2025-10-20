@@ -2,14 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/*.py",
-      "use": "@vercel/python"
+      "src": "api/quote.py",
+      "use": "@vercel/python@1.3.0"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/$1.py"
+      "dest": "/api/quote.py"
     }
   ]
 }
