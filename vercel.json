@@ -1,11 +1,7 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/quote.py",
-      "use": "@vercel/python@3.0.0"
-    }
-  ],
+  "installCommand": "pip install -r requirements.txt",
+  "buildCommand": "echo 'No custom build command needed for Python functions'",
   "routes": [
     {
       "src": "/api/quote",
