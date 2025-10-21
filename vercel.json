@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "api",
+      "src": "api/hello.py",
       "use": "@vercel/python@3.0.0",
       "config": {
         "runtime": "python3.12",
@@ -12,8 +12,8 @@
   ],
   "routes": [
     {
-      "src": "/api/quote",
-      "dest": "/api/quote.py"
+      "src": "/api/hello",
+      "dest": "/api/hello.py"
     }
   ]
 }
