@@ -12,7 +12,7 @@
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
+      "src": "/api/quote",
       "dest": "/api/quote.py"
     }
   ]
