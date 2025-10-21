@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/quote.py",
+      "src": "api",
       "use": "@vercel/python@3.0.0",
       "config": {
         "runtime": "python3.9",
