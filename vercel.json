@@ -3,10 +3,7 @@
   "builds": [
     {
       "src": "api/quote.py",
-      "use": "@vercel/python@3.0.0",
-      "config": {
-        "runtime": "python3.12"
-      }
+      "use": "@vercel/python@3.0.0"
     }
   ],
   "routes": [
