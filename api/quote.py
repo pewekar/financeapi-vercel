@@ -2,12 +2,12 @@ import json
 import yfinance as yf
 
 def handler(request):
-    symbols = request.query.get("symbols", "AAPL,MSFT,GOOG")
+    symbols = request.query.get("symbols", "AAPL,MSFT,GOOG,ORCL,TSLA")
     tickers = yf.Tickers(symbols.replace(",", " "))
 
     result = {}
     for symbol, ticker in tickers.tickers.items():
-        info = ticker.info
+        info = ticker.get_info()
         result[symbol] = {
             "price": info.get("currentPrice"),
             "peRatio": info.get("trailingPE"),
