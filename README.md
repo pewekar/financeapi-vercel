@@ -27,11 +27,27 @@ A secure, robust, and performant serverless API for fetching real-time stock quo
 - **Memory Management**: Prevents unbounded cache growth
 - **Request Metrics**: Execution time tracking
 
-## API Endpoint
+##Crypto Support Added!
+✅ What's New
+Dual Asset Support:
 
-```
-GET /api/quote?symbols=AAPL,MSFT,GOOG
-```
+📊 Stocks: Yahoo Finance (Apple, Tesla, Microsoft, etc.)
+🪙 Crypto: CoinGecko API (Bitcoin, Ethereum, Solana, etc.)
+🔀 Mixed: Query stocks and crypto in the same request!
+
+30+ Supported Cryptocurrencies:
+
+BTC, ETH, SOL, BNB, XRP, ADA, DOGE, MATIC, LINK, DOT
+AVAX, UNI, ATOM, LTC, BCH, XLM, ALGO, FIL, ICP, APT
+ARB, OP, NEAR, STX, TON, TRX, USDT, USDC, SHIB, and more!
+
+Crypto-Specific Data:
+
+Current price in USD
+Market cap
+24-hour price change percentage
+## API Endpoint
+GET https://financeapi-vercel-git-main-pewekar.vercel.app/api/quote?symbols=AAPL,TSLA,BTC,ETH,SOL/api/quote?symbols=AAPL,MSFT,GOOG
 
 ### Query Parameters
 
