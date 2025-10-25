@@ -1,12 +1,10 @@
 {
   "version": 2,
-  "installCommand": "python3.12 -m pip install -r requirements.txt",
-  "buildCommand": "echo 'No custom build command needed for Python functions'",
-  "outputDirectory": ".",
-  "routes": [
-    {
-      "src": "/api/quote",
-      "dest": "api/quote.py"
+  "functions": {
+    "api/quote.py": {
+      "runtime": "python3.9",
+      "maxDuration": 10,
+      "memory": 1024
     }
-  ]
+  }
 }
