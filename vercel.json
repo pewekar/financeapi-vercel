@@ -1,10 +1,7 @@
 {
-  "version": 2,
   "functions": {
-    "api/quote.py": {
-      "runtime": "python3.9",
-      "maxDuration": 10,
-      "memory": 1024
+    "api/**/*.py": {
+      "runtime": "python3.9"
     }
   },
   "headers": [
