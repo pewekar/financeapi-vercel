@@ -23,14 +23,12 @@ RATE_LIMIT_WINDOW = 3600  # 1 hour in seconds
 # Valid stock symbol pattern (letters, numbers, dots, hyphens)
 SYMBOL_PATTERN = re.compile(r'^[A-Z0-9.\-]{1,10}$')
 
-def get_client_ip(request):
-    """Extract client IP from request headers (Vercel proxy headers)"""
-    headers = request.get('headers', {})
-    # Vercel provides the real IP in these headers
+def get_client_ip(environ):
+    """Extract client IP from WSGI environ"""
     return (
-        headers.get('x-real-ip') or 
-        headers.get('x-forwarded-for', '').split(',')[0].strip() or
-        'unknown'
+        environ.get('HTTP_X_REAL_IP') or 
+        environ.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or
+        environ.get('REMOTE_ADDR', 'unknown')
     )
 
 def check_rate_limit(ip):
@@ -219,33 +217,32 @@ def fetch_stock_data(symbol_list, timeout=8):
         logger.error(f"Unexpected error: {str(e)}")
         return None, f"Service temporarily unavailable"
 
-def handler(request):
+def handler(environ, start_response):
+    """WSGI handler for Vercel"""
     start_time = datetime.now()
     
     # Get client IP for rate limiting
-    client_ip = get_client_ip(request)
+    client_ip = get_client_ip(environ)
     
     # Check rate limit
     allowed, remaining = check_rate_limit(client_ip)
     if not allowed:
         logger.warning(f"Rate limit exceeded for IP: {client_ip}")
-        return {
-            "statusCode": 429,
-            "headers": {
-                "Content-Type": "application/json",
-                "Retry-After": "3600",
-                "X-RateLimit-Limit": str(REQUEST_LIMIT),
-                "X-RateLimit-Remaining": "0"
-            },
-            "body": json.dumps({
-                "error": "Rate limit exceeded. Maximum 50 requests per hour.",
-                "retryAfter": 3600
-            })
-        }
+        headers = [
+            ('Content-Type', 'application/json'),
+            ('Retry-After', '3600'),
+            ('X-RateLimit-Limit', str(REQUEST_LIMIT)),
+            ('X-RateLimit-Remaining', '0')
+        ]
+        start_response('429 Too Many Requests', headers)
+        return [json.dumps({
+            "error": "Rate limit exceeded. Maximum 50 requests per hour.",
+            "retryAfter": 3600
+        }).encode()]
     
-    # Parse query string from the request
-    query_string = request.get('query', '')
-    params = parse_qs(query_string) if query_string else {}
+    # Parse query string
+    query_string = environ.get('QUERY_STRING', '')
+    params = parse_qs(query_string)
     
     # Get symbols from query params
     symbols_param = params.get('symbols', ['AAPL,MSFT,GOOG'])[0]
@@ -254,11 +251,9 @@ def handler(request):
     symbol_list, error = sanitize_symbols(symbols_param)
     if error:
         logger.warning(f"Invalid input from {client_ip}: {error}")
-        return {
-            "statusCode": 400,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"error": error})
-        }
+        headers = [('Content-Type', 'application/json')]
+        start_response('400 Bad Request', headers)
+        return [json.dumps({"error": error}).encode()]
     
     symbols_normalized = ','.join(symbol_list)
     cache_key = get_cache_key(symbols_normalized)
@@ -268,22 +263,20 @@ def handler(request):
     if cached_data:
         execution_time = (datetime.now() - start_time).total_seconds()
         logger.info(f"Cache hit for {symbols_normalized} ({execution_time:.2f}s)")
-        return {
-            "statusCode": 200,
-            "headers": {
-                "Content-Type": "application/json",
-                "Cache-Control": f"public, max-age={CACHE_DURATION}",
-                "X-Cache": "HIT",
-                "X-RateLimit-Limit": str(REQUEST_LIMIT),
-                "X-RateLimit-Remaining": str(remaining),
-                "X-Execution-Time": f"{execution_time:.3f}s"
-            },
-            "body": json.dumps({
-                "data": cached_data,
-                "cached": True,
-                "timestamp": datetime.now().isoformat()
-            })
-        }
+        headers = [
+            ('Content-Type', 'application/json'),
+            ('Cache-Control', f'public, max-age={CACHE_DURATION}'),
+            ('X-Cache', 'HIT'),
+            ('X-RateLimit-Limit', str(REQUEST_LIMIT)),
+            ('X-RateLimit-Remaining', str(remaining)),
+            ('X-Execution-Time', f'{execution_time:.3f}s')
+        ]
+        start_response('200 OK', headers)
+        return [json.dumps({
+            "data": cached_data,
+            "cached": True,
+            "timestamp": datetime.now().isoformat()
+        }).encode()]
     
     # Fetch fresh data
     logger.info(f"Fetching data for {symbols_normalized}")
@@ -292,18 +285,16 @@ def handler(request):
     if error:
         execution_time = (datetime.now() - start_time).total_seconds()
         logger.error(f"Fetch failed: {error} ({execution_time:.2f}s)")
-        return {
-            "statusCode": 504,
-            "headers": {
-                "Content-Type": "application/json",
-                "X-RateLimit-Limit": str(REQUEST_LIMIT),
-                "X-RateLimit-Remaining": str(remaining)
-            },
-            "body": json.dumps({
-                "error": error,
-                "symbols": symbol_list
-            })
-        }
+        headers = [
+            ('Content-Type', 'application/json'),
+            ('X-RateLimit-Limit', str(REQUEST_LIMIT)),
+            ('X-RateLimit-Remaining', str(remaining))
+        ]
+        start_response('504 Gateway Timeout', headers)
+        return [json.dumps({
+            "error": error,
+            "symbols": symbol_list
+        }).encode()]
     
     # Cache the successful result
     set_cache(cache_key, result)
@@ -311,19 +302,17 @@ def handler(request):
     execution_time = (datetime.now() - start_time).total_seconds()
     logger.info(f"Successfully fetched {symbols_normalized} ({execution_time:.2f}s)")
     
-    return {
-        "statusCode": 200,
-        "headers": {
-            "Content-Type": "application/json",
-            "Cache-Control": f"public, max-age={CACHE_DURATION}",
-            "X-Cache": "MISS",
-            "X-RateLimit-Limit": str(REQUEST_LIMIT),
-            "X-RateLimit-Remaining": str(remaining),
-            "X-Execution-Time": f"{execution_time:.3f}s"
-        },
-        "body": json.dumps({
-            "data": result,
-            "cached": False,
-            "timestamp": datetime.now().isoformat()
-        })
-    }
+    headers = [
+        ('Content-Type', 'application/json'),
+        ('Cache-Control', f'public, max-age={CACHE_DURATION}'),
+        ('X-Cache', 'MISS'),
+        ('X-RateLimit-Limit', str(REQUEST_LIMIT)),
+        ('X-RateLimit-Remaining', str(remaining)),
+        ('X-Execution-Time', f'{execution_time:.3f}s')
+    ]
+    start_response('200 OK', headers)
+    return [json.dumps({
+        "data": result,
+        "cached": False,
+        "timestamp": datetime.now().isoformat()
+    }).encode()]
